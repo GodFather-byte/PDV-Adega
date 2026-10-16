@@ -33,6 +33,7 @@ O workflow `.github/workflows/build-windows.yml` publica uma versão self-contai
 - Exportação CSV do relatório selecionado, compatível com planilhas.
 - Licenciamento por assinatura com ativação vinculada ao computador e até 7 dias de operação offline.
 - Painel web para criar, renovar e revogar licenças, ajustar o limite de computadores e liberar ativações.
+- Chamados de suporte com histórico, versão do PDV e dados técnicos de diagnóstico enviados somente após consentimento.
 
 O catálogo inicial é de demonstração. Como ainda não há custo de compra, os relatórios não calculam margem/lucro. O PDV ainda não tem contas individuais de operadores, sincronização entre caixas, cadastro de produtos, integração com meios de pagamento ou emissão fiscal. Valide essas integrações antes de usar em produção.
 
@@ -54,3 +55,13 @@ No painel, crie uma licença informando cliente, vencimento e quantidade de comp
 O PDV valida a assinatura online ao iniciar. Se o servidor ficar indisponível, uma licença previamente validada ainda funciona por até 7 dias desde a última validação e nunca além da data de expiração armazenada. Chaves e estado local são protegidos com DPAPI para o usuário do Windows atual. Revogações e renovações chegam ao PDV quando ele voltar a se conectar.
 
 O arquivo de licenças e as chaves de proteção são dados operacionais críticos: configure volume persistente, HTTPS, senha forte e backup antes de usar em produção. A API requer .NET 8 SDK/runtime para execução e build.
+
+## Suporte técnico
+
+O botão **Suporte** no PDV abre chamados associados à licença e ao computador ativado. O cliente pode consultar as respostas e enviar mensagens; o painel lista chamados, versão do aplicativo, computador, histórico, estado e consentimento para sessão remota. Respostas e mudanças de estado pelo painel são registradas no histórico. Chamados e mensagens ficam no armazenamento JSON configurado junto às licenças.
+
+O envio de um pacote ZIP de diagnóstico exige duas confirmações no PDV. O conteúdo contém versão do PDV, versão do Windows, nome e identificador da instalação e logs técnicos de erros do aplicativo. Logs podem conter caminhos locais do Windows. Não são incluídos dados de vendas, produtos, estoque, clientes, caixa, impressora ou chave de licença. O usuário também pode abrir chamado sem anexar diagnóstico. Os anexos são apagados após 30 dias (a limpeza ocorre quando o servidor processa operações de suporte); o histórico do chamado permanece.
+
+A solicitação remota é opt-in por chamado e sua data é registrada, mas o PDV e o servidor **não abrem conexão nem instalam ferramenta de acesso remoto**. A equipe deve combinar um programa externo com o cliente; o próprio cliente inicia e pode encerrar a sessão. Registre protocolo e observações no histórico do chamado e não solicite senha de acesso permanente.
+
+Como o servidor atual usa JSON, mantenha uma instância, armazenamento persistente para o banco e a pasta dos anexos, HTTPS, backups e controles de acesso. As rotas de suporte autenticam o PDV por chave de licença e identificador da instalação; não compartilhe a chave nem os pacotes fora do canal de suporte autorizado.

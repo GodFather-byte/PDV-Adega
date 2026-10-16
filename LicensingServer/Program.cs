@@ -70,8 +70,19 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+    options.AddPolicy("support-write", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 15,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 builder.Services.AddSingleton<ILicenseService, LicenseService>();
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 5 * 1024 * 1024);
 
 var app = builder.Build();
 app.UseExceptionHandler();
@@ -85,6 +96,10 @@ app.UseRateLimiter();
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path.StartsWithSegments("/api/support") ||
+        context.Request.Path.StartsWithSegments("/api/admin/support"))
+        context.Response.Headers.CacheControl = "no-store";
+
     if (context.Request.Path.StartsWithSegments("/api/admin") &&
         (HttpMethods.IsPost(context.Request.Method) ||
          HttpMethods.IsPut(context.Request.Method) ||
@@ -142,6 +157,7 @@ app.MapPost("/api/admin/logout", async Task<NoContent> (HttpContext context, Can
     .Produces(StatusCodes.Status204NoContent);
 
 app.MapLicenses();
+app.MapSupport();
 
 app.UseSwagger();
 app.UseSwaggerUI();

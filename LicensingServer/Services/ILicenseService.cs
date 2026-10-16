@@ -17,4 +17,16 @@ public interface ILicenseService
     Task<bool> RemoveDeviceAsync(string id, string deviceId, CancellationToken cancellationToken);
     /// <summary>Ativa ou valida um dispositivo.</summary>
     Task<LicenseValidationResponse?> ValidateAsync(ValidateLicenseRequest request, CancellationToken cancellationToken);
+    /// <summary>Abre um chamado autenticado por licença e instalação.</summary>
+    Task<SupportTicketResponse?> CreateSupportTicketAsync(CreateSupportTicketRequest request, CancellationToken cancellationToken);
+    /// <summary>Lista chamados pertencentes à instalação autenticada.</summary>
+    Task<IReadOnlyList<SupportTicketResponse>?> ListCustomerTicketsAsync(SupportTicketSearchRequest request, CancellationToken cancellationToken);
+    /// <summary>Adiciona uma mensagem do cliente ao chamado.</summary>
+    Task<SupportTicketResponse?> AddCustomerMessageAsync(string ticketId, CustomerTicketMessageRequest request, CancellationToken cancellationToken);
+    /// <summary>Lista chamados para a equipe administrativa.</summary>
+    Task<IReadOnlyList<SupportTicketResponse>> ListSupportTicketsAsync(CancellationToken cancellationToken);
+    /// <summary>Atualiza estado e registra uma mensagem administrativa.</summary>
+    Task<SupportTicketResponse?> UpdateSupportTicketAsync(string ticketId, UpdateSupportTicketRequest request, CancellationToken cancellationToken);
+    /// <summary>Obtém um pacote de diagnóstico sem expor seu caminho à API.</summary>
+    Task<SupportDiagnosticFile?> GetDiagnosticPackageAsync(string ticketId, CancellationToken cancellationToken);
 }

@@ -52,3 +52,54 @@ Content-Type: application/json
   "deviceId": "replace-with-device-id",
   "deviceName": "PDV-CAIXA-01"
 }
+
+### Open a support ticket (send DiagnosticConsent=true only after user confirmation)
+POST {{baseUrl}}/api/support/tickets
+Content-Type: application/json
+
+{
+  "licenseKey": "replace-with-license-key",
+  "deviceId": "replace-with-device-id",
+  "deviceName": "PDV-CAIXA-01",
+  "appVersion": "1.0.0.0",
+  "subject": "Erro ao imprimir comprovante",
+  "description": "O aplicativo mostra uma falha ao imprimir.",
+  "diagnosticConsent": false,
+  "diagnosticPackageBase64": null,
+  "remoteSessionRequested": false
+}
+
+### List support tickets for this license and computer
+POST {{baseUrl}}/api/support/tickets/search
+Content-Type: application/json
+
+{
+  "licenseKey": "replace-with-license-key",
+  "deviceId": "replace-with-device-id"
+}
+
+### Reply to a support ticket
+POST {{baseUrl}}/api/support/tickets/replace-with-ticket-id/messages
+Content-Type: application/json
+
+{
+  "licenseKey": "replace-with-license-key",
+  "deviceId": "replace-with-device-id",
+  "message": "Segue mais detalhes do problema."
+}
+
+### List support tickets (requires admin session cookie)
+GET {{baseUrl}}/api/admin/support/tickets/
+
+### Update ticket status and add an auditable support reply (admin Origin required)
+PUT {{baseUrl}}/api/admin/support/tickets/replace-with-ticket-id
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+{
+  "status": "InProgress",
+  "message": "Vamos orientar o cliente a iniciar uma sessão temporária na ferramenta remota combinada."
+}
+
+### Download consented diagnostics (requires admin session cookie)
+GET {{baseUrl}}/api/admin/support/tickets/replace-with-ticket-id/diagnostics

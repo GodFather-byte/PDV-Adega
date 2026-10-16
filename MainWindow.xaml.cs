@@ -111,6 +111,19 @@ public partial class MainWindow : Window
         new ReportsWindow(sales, cashSessions, products) { Owner = this }.ShowDialog();
     }
 
+    private void Support_Click(object sender, RoutedEventArgs e)
+    {
+        var license = new LicenseClient().GetCurrentLicense();
+        if (license is null)
+        {
+            MessageBox.Show(this, "Não foi possível encontrar os dados de ativação. Reative o PDV e tente novamente.",
+                "Suporte indisponível", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        new SupportWindow(new SupportClient(license)) { Owner = this }.ShowDialog();
+    }
+
     private void CashSession_Click(object sender, RoutedEventArgs e)
     {
         var window = new CashSessionWindow(sales) { Owner = this };
@@ -254,6 +267,7 @@ public partial class MainWindow : Window
             }
             catch (Exception exception)
             {
+                SupportDiagnostics.LogException("Impressão de venda", exception);
                 printError = exception.Message;
             }
         }

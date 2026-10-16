@@ -105,6 +105,8 @@ public sealed class LicenseClient
         }
     }
 
+    public LicenseState? GetCurrentLicense() => LoadState();
+
     private async Task ValidateOnlineAsync(LicenseState state)
     {
         using var response = await httpClient.PostAsJsonAsync(

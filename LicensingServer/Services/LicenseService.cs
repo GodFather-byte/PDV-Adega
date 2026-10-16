@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.IO.Compression;
 using PDV_Adega.LicensingServer;
 
 namespace PDV_Adega.LicensingServer.Services;
@@ -10,6 +11,7 @@ public sealed class LicenseService : ILicenseService
 {
     private readonly SemaphoreSlim fileLock = new(1, 1);
     private readonly string dataPath;
+    private readonly string diagnosticsDirectory;
     private readonly JsonSerializerOptions jsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     /// <summary>Inicializa o armazenamento persistente do servidor.</summary>
@@ -17,6 +19,8 @@ public sealed class LicenseService : ILicenseService
     {
         dataPath = Environment.GetEnvironmentVariable("PDV_LICENSE_DATA_PATH") ??
             Path.Combine(environment.ContentRootPath, "App_Data", "licenses.json");
+        diagnosticsDirectory = Environment.GetEnvironmentVariable("PDV_SUPPORT_FILES_PATH") ??
+            Path.Combine(Path.GetDirectoryName(dataPath)!, "support-diagnostics");
     }
 
     /// <summary>Lista licenças sem expor suas chaves completas.</summary>
@@ -176,6 +180,241 @@ public sealed class LicenseService : ILicenseService
         }
     }
 
+    /// <summary>Abre um chamado autenticado e salva somente diagnóstico enviado pelo usuário.</summary>
+    public async Task<SupportTicketResponse?> CreateSupportTicketAsync(
+        CreateSupportTicketRequest request,
+        CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            if (RemoveExpiredDiagnostics(database, DateTimeOffset.UtcNow))
+                await WriteAsync(database, cancellationToken);
+            var license = FindLicense(database, request.LicenseKey);
+            if (license is null || license.IsRevoked ||
+                license.Devices.All(device => device.DeviceId != request.DeviceId))
+                return null;
+
+            byte[]? diagnosticBytes = null;
+            if (request.DiagnosticConsent != !string.IsNullOrWhiteSpace(request.DiagnosticPackageBase64))
+                return null;
+            if (!string.IsNullOrWhiteSpace(request.DiagnosticPackageBase64))
+            {
+                try
+                {
+                    diagnosticBytes = Convert.FromBase64String(request.DiagnosticPackageBase64);
+                    using var archiveStream = new MemoryStream(diagnosticBytes);
+                    using var archive = new ZipArchive(archiveStream, ZipArchiveMode.Read);
+                    if (archive.Entries.Count is < 1 or > 5 ||
+                        archive.Entries.Any(entry => entry.FullName.Contains("..", StringComparison.Ordinal) ||
+                            Path.IsPathRooted(entry.FullName)))
+                        return null;
+                }
+                catch (FormatException)
+                {
+                    return null;
+                }
+                catch (InvalidDataException)
+                {
+                    return null;
+                }
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var ticket = new SupportTicketDocument
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                LicenseId = license.Id,
+                CustomerName = license.CustomerName,
+                DeviceId = request.DeviceId,
+                DeviceName = request.DeviceName.Trim(),
+                AppVersion = request.AppVersion.Trim(),
+                Subject = request.Subject.Trim(),
+                Description = request.Description.Trim(),
+                Status = SupportTicketStatus.Open,
+                CreatedAt = now,
+                UpdatedAt = now,
+                HasDiagnostics = diagnosticBytes is not null,
+                DiagnosticFileName = diagnosticBytes is null ? null : $"{Guid.NewGuid():N}.zip",
+                DiagnosticExpiresAt = diagnosticBytes is null ? null : now.AddDays(30),
+                DiagnosticConsentAt = diagnosticBytes is null ? null : now,
+                RemoteSessionRequested = request.RemoteSessionRequested,
+                RemoteConsentAt = request.RemoteSessionRequested ? now : null
+            };
+            ticket.Messages.Add(new SupportTicketMessageDocument
+            {
+                Author = "Cliente",
+                Message = ticket.Description,
+                CreatedAt = now
+            });
+
+            string? diagnosticPath = null;
+            if (diagnosticBytes is not null)
+            {
+                Directory.CreateDirectory(diagnosticsDirectory);
+                diagnosticPath = Path.Combine(diagnosticsDirectory, ticket.DiagnosticFileName!);
+                await File.WriteAllBytesAsync(diagnosticPath, diagnosticBytes, cancellationToken);
+            }
+
+            database.SupportTickets.Add(ticket);
+            try
+            {
+                await WriteAsync(database, cancellationToken);
+            }
+            catch
+            {
+                if (diagnosticPath is not null && File.Exists(diagnosticPath)) File.Delete(diagnosticPath);
+                throw;
+            }
+
+            return ToResponse(ticket);
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
+    /// <summary>Lista chamados de uma instalação após conferir licença e dispositivo.</summary>
+    public async Task<IReadOnlyList<SupportTicketResponse>?> ListCustomerTicketsAsync(
+        SupportTicketSearchRequest request,
+        CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            if (RemoveExpiredDiagnostics(database, DateTimeOffset.UtcNow))
+                await WriteAsync(database, cancellationToken);
+            var license = FindLicense(database, request.LicenseKey);
+            if (license is null || license.IsRevoked ||
+                license.Devices.All(device => device.DeviceId != request.DeviceId))
+                return null;
+
+            return database.SupportTickets
+                .Where(ticket => ticket.LicenseId == license.Id && ticket.DeviceId == request.DeviceId)
+                .OrderByDescending(ticket => ticket.UpdatedAt)
+                .Select(ToResponse)
+                .ToList();
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
+    /// <summary>Adiciona uma resposta do cliente a um chamado pertencente à instalação.</summary>
+    public async Task<SupportTicketResponse?> AddCustomerMessageAsync(
+        string ticketId,
+        CustomerTicketMessageRequest request,
+        CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            var license = FindLicense(database, request.LicenseKey);
+            if (license is null || license.IsRevoked ||
+                license.Devices.All(device => device.DeviceId != request.DeviceId))
+                return null;
+
+            var ticket = database.SupportTickets.SingleOrDefault(item =>
+                item.Id == ticketId && item.LicenseId == license.Id && item.DeviceId == request.DeviceId);
+            if (ticket is null || ticket.Status == SupportTicketStatus.Resolved) return null;
+
+            var now = DateTimeOffset.UtcNow;
+            ticket.Messages.Add(new SupportTicketMessageDocument
+            {
+                Author = "Cliente",
+                Message = request.Message.Trim(),
+                CreatedAt = now
+            });
+            ticket.UpdatedAt = now;
+            ticket.Status = SupportTicketStatus.Open;
+            await WriteAsync(database, cancellationToken);
+            return ToResponse(ticket);
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
+    /// <summary>Lista chamados e histórico visíveis à equipe administrativa.</summary>
+    public async Task<IReadOnlyList<SupportTicketResponse>> ListSupportTicketsAsync(CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            if (RemoveExpiredDiagnostics(database, DateTimeOffset.UtcNow))
+                await WriteAsync(database, cancellationToken);
+            return database.SupportTickets
+                .OrderByDescending(ticket => ticket.UpdatedAt)
+                .Select(ToResponse)
+                .ToList();
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
+    /// <summary>Atualiza estado e registra a resposta administrativa no histórico.</summary>
+    public async Task<SupportTicketResponse?> UpdateSupportTicketAsync(
+        string ticketId,
+        UpdateSupportTicketRequest request,
+        CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            var ticket = database.SupportTickets.SingleOrDefault(item => item.Id == ticketId);
+            if (ticket is null) return null;
+
+            var now = DateTimeOffset.UtcNow;
+            ticket.Status = request.Status;
+            ticket.UpdatedAt = now;
+            ticket.Messages.Add(new SupportTicketMessageDocument
+            {
+                Author = "Suporte",
+                Message = request.Message.Trim(),
+                CreatedAt = now
+            });
+            await WriteAsync(database, cancellationToken);
+            return ToResponse(ticket);
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
+    /// <summary>Retorna o arquivo de diagnóstico associado a um chamado.</summary>
+    public async Task<SupportDiagnosticFile?> GetDiagnosticPackageAsync(
+        string ticketId,
+        CancellationToken cancellationToken)
+    {
+        await fileLock.WaitAsync(cancellationToken);
+        try
+        {
+            var database = await ReadAsync(cancellationToken);
+            if (RemoveExpiredDiagnostics(database, DateTimeOffset.UtcNow))
+                await WriteAsync(database, cancellationToken);
+            var ticket = database.SupportTickets
+                .SingleOrDefault(item => item.Id == ticketId && item.DiagnosticFileName is not null);
+            if (ticket?.DiagnosticFileName is null) return null;
+            var path = Path.Combine(diagnosticsDirectory, ticket.DiagnosticFileName);
+            return File.Exists(path) ? new SupportDiagnosticFile(path, $"PDV-Adega-diagnosticos-{ticket.Id[..8]}.zip") : null;
+        }
+        finally
+        {
+            fileLock.Release();
+        }
+    }
+
     private async Task<LicenseDatabase> ReadAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(dataPath)) return new LicenseDatabase();
@@ -215,6 +454,55 @@ public sealed class LicenseService : ILicenseService
     private static string HashKey(string key) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)));
 
+    private static LicenseDocument? FindLicense(LicenseDatabase database, string licenseKey)
+    {
+        var keyHash = HashKey(licenseKey.Trim().ToUpperInvariant());
+        return database.Licenses.FirstOrDefault(license =>
+            CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(license.KeyHash),
+                Convert.FromHexString(keyHash)));
+    }
+
+    private bool RemoveExpiredDiagnostics(LicenseDatabase database, DateTimeOffset now)
+    {
+        var changed = false;
+        foreach (var ticket in database.SupportTickets.Where(ticket =>
+                     ticket.HasDiagnostics &&
+                     ticket.DiagnosticExpiresAt is { } expiresAt &&
+                     expiresAt <= now))
+        {
+            if (ticket.DiagnosticFileName is { } fileName)
+            {
+                var path = Path.Combine(diagnosticsDirectory, fileName);
+                if (File.Exists(path)) File.Delete(path);
+            }
+
+            ticket.HasDiagnostics = false;
+            ticket.DiagnosticExpired = true;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static SupportTicketResponse ToResponse(SupportTicketDocument ticket) => new(
+        ticket.Id,
+        ticket.CustomerName,
+        ticket.Subject,
+        ticket.Description,
+        ticket.Status.ToString(),
+        ticket.DeviceName,
+        ticket.AppVersion,
+        ticket.CreatedAt,
+        ticket.UpdatedAt,
+        ticket.HasDiagnostics,
+        ticket.DiagnosticExpired,
+        ticket.DiagnosticConsentAt,
+        ticket.RemoteSessionRequested,
+        ticket.RemoteConsentAt,
+        ticket.Messages.Select(message =>
+            new SupportTicketMessageResponse(message.Author, message.Message, message.CreatedAt)).ToList());
+
     private static LicenseResponse ToResponse(LicenseDocument license) => new(
         license.Id,
         license.CustomerName,
@@ -232,6 +520,7 @@ public sealed class LicenseService : ILicenseService
     private sealed class LicenseDatabase
     {
         public List<LicenseDocument> Licenses { get; init; } = [];
+        public List<SupportTicketDocument> SupportTickets { get; init; } = [];
     }
 
     private sealed class LicenseDocument
@@ -253,5 +542,35 @@ public sealed class LicenseService : ILicenseService
         public string DeviceName { get; set; } = "";
         public DateTimeOffset FirstActivatedAt { get; init; }
         public DateTimeOffset LastSeenAt { get; set; }
+    }
+
+    private sealed class SupportTicketDocument
+    {
+        public string Id { get; init; } = "";
+        public string LicenseId { get; init; } = "";
+        public string CustomerName { get; init; } = "";
+        public string DeviceId { get; init; } = "";
+        public string DeviceName { get; init; } = "";
+        public string AppVersion { get; init; } = "";
+        public string Subject { get; init; } = "";
+        public string Description { get; init; } = "";
+        public SupportTicketStatus Status { get; set; }
+        public DateTimeOffset CreatedAt { get; init; }
+        public DateTimeOffset UpdatedAt { get; set; }
+        public bool HasDiagnostics { get; set; }
+        public bool DiagnosticExpired { get; set; }
+        public string? DiagnosticFileName { get; init; }
+        public DateTimeOffset? DiagnosticExpiresAt { get; init; }
+        public DateTimeOffset? DiagnosticConsentAt { get; init; }
+        public bool RemoteSessionRequested { get; init; }
+        public DateTimeOffset? RemoteConsentAt { get; init; }
+        public List<SupportTicketMessageDocument> Messages { get; init; } = [];
+    }
+
+    private sealed class SupportTicketMessageDocument
+    {
+        public string Author { get; init; } = "";
+        public string Message { get; init; } = "";
+        public DateTimeOffset CreatedAt { get; init; }
     }
 }

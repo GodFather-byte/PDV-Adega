@@ -1,0 +1,44 @@
+<Window x:Class="PDV_Adega.PrinterSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Impressora térmica" Width="520" Height="510" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="#F5F7F3" FontFamily="Segoe UI">
+  <Grid Margin="26">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <StackPanel>
+      <TextBlock Text="Impressora térmica" Foreground="#202B25" FontSize="20" FontWeight="Bold" />
+      <TextBlock Text="Compatível com ESC/POS via spooler RAW do Windows" Foreground="#78817A" FontSize="12" Margin="0,5,0,0" />
+    </StackPanel>
+    <StackPanel Grid.Row="1" Margin="0,20,0,0">
+      <TextBlock Text="Impressora instalada" Foreground="#465149" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <ComboBox x:Name="PrinterCombo" Height="38" Padding="8,5" />
+    </StackPanel>
+    <StackPanel Grid.Row="2" Margin="0,13,0,0">
+      <TextBlock Text="Largura do papel" Foreground="#465149" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,6" />
+      <ComboBox x:Name="PaperWidthCombo" Height="36" SelectedIndex="1">
+        <ComboBoxItem Content="58 mm · 32 colunas" />
+        <ComboBoxItem Content="80 mm · 48 colunas" />
+      </ComboBox>
+    </StackPanel>
+    <StackPanel Grid.Row="3" Margin="0,19,0,0">
+      <CheckBox x:Name="PrintAfterSaleBox" Content="Imprimir cupom automaticamente após a venda" Foreground="#344139" FontSize="12" Margin="0,0,0,12" />
+      <CheckBox x:Name="CutPaperBox" Content="Enviar comando de corte de papel" Foreground="#344139" FontSize="12" Margin="0,0,0,12" />
+      <CheckBox x:Name="OpenDrawerBox" Content="Abrir gaveta após imprimir uma venda" Foreground="#344139" FontSize="12" />
+      <Border Background="#EAF1EB" CornerRadius="6" Padding="11" Margin="0,19,0,0">
+        <TextBlock Text="A impressora precisa estar instalada no Windows e aceitar comandos ESC/POS em modo RAW. O teste não abre a gaveta." TextWrapping="Wrap" Foreground="#46604E" FontSize="11" />
+      </Border>
+    </StackPanel>
+    <Grid Grid.Row="4" Margin="0,22,0,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Button Content="Testar impressão" HorizontalAlignment="Left" Height="40" Padding="14,0" Background="White" Foreground="#345D47" BorderBrush="#E5E9E3" BorderThickness="1" Click="TestPrint_Click" />
+      <Button Grid.Column="1" Content="Cancelar" Height="40" Padding="15,0" Margin="8,0,0,0" Background="White" Foreground="#465149" BorderBrush="#E5E9E3" BorderThickness="1" IsCancel="True" />
+      <Button Grid.Column="2" Content="Salvar" Height="40" Padding="18,0" Margin="8,0,0,0" Background="#345D47" Foreground="White" FontWeight="Bold" Click="Save_Click" />
+    </Grid>
+  </Grid>
+</Window>

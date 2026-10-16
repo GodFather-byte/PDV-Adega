@@ -1,0 +1,60 @@
+<Window x:Class="PDV_Adega.CashSessionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Controle de caixa" Width="540" Height="700" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="#F5F7F3" FontFamily="Segoe UI">
+  <Grid Margin="26">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+    <StackPanel>
+      <TextBlock Text="Controle de caixa" Foreground="#202B25" FontSize="20" FontWeight="Bold" />
+      <TextBlock x:Name="SubtitleLabel" Foreground="#78817A" FontSize="12" Margin="0,5,0,0" />
+    </StackPanel>
+
+    <StackPanel x:Name="OpenPanel" Grid.Row="1" VerticalAlignment="Top" Margin="0,28,0,0">
+      <TextBlock Text="Fundo de troco inicial" Foreground="#465149" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,7" />
+      <TextBox x:Name="OpeningCashBox" Height="42" Padding="10,8" FontSize="15" Text="0,00" />
+      <TextBlock Text="Informe o valor em dinheiro que ficará disponível no início do turno." Foreground="#78817A" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
+    </StackPanel>
+
+    <StackPanel x:Name="SessionPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,20,0,0">
+      <Border Background="White" BorderBrush="#E5E9E3" BorderThickness="1" CornerRadius="7" Padding="14">
+        <StackPanel>
+          <TextBlock x:Name="SessionNumberLabel" Foreground="#202B25" FontSize="15" FontWeight="Bold" />
+          <TextBlock x:Name="OpenedAtLabel" Foreground="#78817A" FontSize="11" Margin="0,4,0,12" />
+          <Grid Margin="0,5"><TextBlock Text="Fundo inicial" Foreground="#667069" FontSize="11" /><TextBlock x:Name="OpeningCashLabel" HorizontalAlignment="Right" Foreground="#202B25" FontSize="11" FontWeight="SemiBold" /></Grid>
+          <Grid Margin="0,5"><TextBlock Text="Vendas em dinheiro" Foreground="#667069" FontSize="11" /><TextBlock x:Name="CashSalesLabel" HorizontalAlignment="Right" Foreground="#202B25" FontSize="11" FontWeight="SemiBold" /></Grid>
+          <Grid Margin="0,5"><TextBlock Text="Movimentos líquidos" Foreground="#667069" FontSize="11" /><TextBlock x:Name="MovementsTotalLabel" HorizontalAlignment="Right" Foreground="#202B25" FontSize="11" FontWeight="SemiBold" /></Grid>
+          <Border BorderBrush="#E5E9E3" BorderThickness="0,1,0,0" Padding="0,10,0,0" Margin="0,7,0,0">
+            <Grid><TextBlock Text="Saldo esperado" Foreground="#202B25" FontSize="13" FontWeight="Bold" /><TextBlock x:Name="ExpectedCashLabel" HorizontalAlignment="Right" Foreground="#345D47" FontSize="15" FontWeight="Bold" /></Grid>
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="Movimentação de caixa" Foreground="#202B25" FontSize="13" FontWeight="Bold" Margin="0,18,0,8" />
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <ComboBox x:Name="MovementTypeCombo" Height="36" SelectedIndex="0" Margin="0,0,7,0">
+          <ComboBoxItem Content="Suprimento" />
+          <ComboBoxItem Content="Sangria" />
+        </ComboBox>
+        <TextBox x:Name="MovementAmountBox" Grid.Column="1" Height="36" Padding="7,6" Margin="0,0,7,0" ToolTip="Valor em reais" />
+        <TextBox x:Name="MovementNoteBox" Grid.Column="2" Height="36" Padding="7,6" ToolTip="Descrição do movimento" />
+      </Grid>
+      <Button Content="Registrar movimento" HorizontalAlignment="Left" Height="34" Padding="12,0" Margin="0,8,0,0" Background="White" Foreground="#345D47" BorderBrush="#E5E9E3" BorderThickness="1" Click="RegisterMovement_Click" />
+      <TextBlock x:Name="MovementFeedbackLabel" Foreground="#345D47" FontSize="10" Margin="0,5,0,0" />
+
+      <TextBlock Text="Conferência para fechamento" Foreground="#202B25" FontSize="13" FontWeight="Bold" Margin="0,19,0,8" />
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <TextBox x:Name="CountedCashBox" Height="40" Padding="9,7" FontSize="13" TextChanged="CountedCashBox_TextChanged" ToolTip="Dinheiro contado no caixa" />
+        <TextBlock x:Name="DifferenceLabel" Grid.Column="1" VerticalAlignment="Center" Foreground="#667069" FontSize="11" Margin="10,0,0,0" />
+      </Grid>
+      <TextBlock Text="O fechamento registra o valor contado e a diferença para o saldo esperado." Foreground="#78817A" FontSize="10" TextWrapping="Wrap" Margin="0,7,0,0" />
+    </StackPanel>
+
+    <Grid Grid.Row="2" Margin="0,18,0,0">
+      <Button Content="Fechar" HorizontalAlignment="Left" Height="42" Padding="17,0" Background="White" Foreground="#465149" BorderBrush="#E5E9E3" BorderThickness="1" IsCancel="True" />
+      <Button x:Name="PrimaryButton" Content="Abrir caixa" HorizontalAlignment="Right" Height="42" Padding="19,0" Background="#345D47" Foreground="White" FontWeight="Bold" Click="PrimaryButton_Click" />
+    </Grid>
+  </Grid>
+</Window>

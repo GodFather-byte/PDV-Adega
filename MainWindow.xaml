@@ -28,11 +28,24 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
       </Grid.RowDefinitions>
-      <StackPanel Grid.Row="0" Margin="0,0,0,20">
-        <TextBlock Text="ADEGA SANTA RITA" Foreground="#345D47" FontSize="10" FontWeight="Bold" />
-        <TextBlock Text="Ponto de venda" Foreground="#202B25" FontSize="26" FontWeight="Bold" Margin="0,3,0,0" />
-        <TextBlock x:Name="DateLabel" Foreground="#78817A" FontSize="12" Margin="0,3,0,0" />
-      </StackPanel>
+      <Grid Grid.Row="0" Margin="0,0,0,20">
+        <StackPanel>
+          <TextBlock Text="ADEGA SANTA RITA" Foreground="#345D47" FontSize="10" FontWeight="Bold" />
+          <TextBlock Text="Ponto de venda" Foreground="#202B25" FontSize="26" FontWeight="Bold" Margin="0,3,0,0" />
+          <TextBlock x:Name="DateLabel" Foreground="#78817A" FontSize="12" Margin="0,3,0,0" />
+        </StackPanel>
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Ellipse x:Name="CashStatusDot" Width="8" Height="8" Fill="#A3473B" VerticalAlignment="Center" />
+            <TextBlock x:Name="CashStatusLabel" Text="Caixa fechado" Foreground="#465149" FontSize="11" Margin="7,0,0,0" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,9,0,0">
+            <Button x:Name="CashSessionButton" Content="Abrir caixa" Padding="12,8" Background="#345D47" Foreground="White" BorderThickness="0" Click="CashSession_Click" />
+            <Button Content="Relatórios" Margin="7,0,0,0" Padding="12,8" Background="White" Foreground="#345D47" BorderBrush="#E5E9E3" BorderThickness="1" Click="Reports_Click" />
+            <Button Content="Impressora" Margin="7,0,0,0" Padding="12,8" Background="White" Foreground="#345D47" BorderBrush="#E5E9E3" BorderThickness="1" Click="PrinterSettings_Click" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
       <Grid Grid.Row="1" Margin="0,0,0,15">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Border Height="42" Background="White" BorderBrush="#E5E9E3" BorderThickness="1" CornerRadius="6">

@@ -44,9 +44,43 @@ public sealed class LocalStore
         }
     }
 
+    public List<CashSession> LoadCashSessions()
+    {
+        var path = Path.Combine(directory, "cash-sessions.json");
+        if (!File.Exists(path)) return [];
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<CashSession>>(File.ReadAllText(path)) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    public PrinterOptions LoadPrinterOptions()
+    {
+        var path = Path.Combine(directory, "printer-settings.json");
+        if (!File.Exists(path)) return new PrinterOptions();
+
+        try
+        {
+            return JsonSerializer.Deserialize<PrinterOptions>(File.ReadAllText(path)) ?? new PrinterOptions();
+        }
+        catch (JsonException)
+        {
+            return new PrinterOptions();
+        }
+    }
+
     public void SaveProducts(IEnumerable<Product> products) => Save("products.json", products);
 
     public void SaveSales(IEnumerable<SaleRecord> sales) => Save("sales.json", sales);
+
+    public void SaveCashSessions(IEnumerable<CashSession> sessions) => Save("cash-sessions.json", sessions);
+
+    public void SavePrinterOptions(PrinterOptions options) => Save("printer-settings.json", options);
 
     private void Save<T>(string fileName, T value)
     {

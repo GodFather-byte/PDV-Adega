@@ -23,5 +23,9 @@ dotnet run --project PDV-Adega.csproj
 - Pagamento por Pix, cartão ou dinheiro, com cálculo e validação de troco.
 - Estoque limitado à quantidade disponível e atualizado após cada venda.
 - Produtos e vendas salvos como JSON em `%LOCALAPPDATA%\PDV-Adega`.
+- Controle de turno com abertura, fundo de troco, suprimentos, sangrias e fechamento conferido.
+- Relatórios por período de vendas, pagamentos, produtos, sessões e movimentações de caixa.
+- Detalhamento de itens vendidos, desempenho por categoria e posição de estoque a preço de venda.
+- Exportação CSV do relatório selecionado, compatível com planilhas.
 
-O catálogo inicial é de demonstração. Esta versão ainda não tem login, sincronização entre caixas, cadastro de produtos, integração com meios de pagamento ou emissão fiscal. Valide essas integrações antes de usar em produção.
+O catálogo inicial é de demonstração. Como ainda não há custo de compra, os relatórios não calculam margem/lucro. Esta versão também não tem login, sincronização entre caixas, cadastro de produtos, integração com meios de pagamento ou emissão fiscal. Valide essas integrações antes de usar em produção.

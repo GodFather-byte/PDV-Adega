@@ -15,6 +15,9 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<CartLine> cart = [];
     private List<Product> products = [];
     private List<SaleRecord> sales = [];
+    private List<CashSession> cashSessions = [];
+    private CashSession? activeCashSession;
+    private PrinterOptions printerOptions = new();
     private string selectedCategory = "Todos";
 
     public MainWindow()
@@ -27,10 +30,14 @@ public partial class MainWindow : Window
             DateTime.Now.ToString("dddd, d 'de' MMMM 'de' yyyy", BrazilianCulture));
         products = store.LoadProducts();
         sales = store.LoadSales();
+        cashSessions = store.LoadCashSessions();
+        activeCashSession = cashSessions.LastOrDefault(session => session.ClosedAt is null);
+        printerOptions = store.LoadPrinterOptions();
         CategoriesList.ItemsSource = new[] { "Todos" }.Concat(products.Select(product => product.Category).Distinct()).ToList();
         CategoriesList.Loaded += (_, _) => UpdateCategoryStyles();
         ProductsList.ItemsSource = visibleProducts;
         CartList.ItemsSource = cart;
+        UpdateCashStatus();
         RefreshProducts();
         RefreshCart();
     }
@@ -53,7 +60,8 @@ public partial class MainWindow : Window
     private void RefreshCart()
     {
         EmptyCartLabel.Visibility = cart.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        CheckoutButton.IsEnabled = cart.Count > 0;
+        CheckoutButton.IsEnabled = cart.Count > 0 && activeCashSession is not null;
+        CheckoutButton.ToolTip = activeCashSession is null ? "Abra o caixa para iniciar uma venda." : null;
         ClearCartButton.IsEnabled = cart.Count > 0;
         SaleNumberLabel.Text = $"Venda #{sales.Count + 1:00000}";
         UpdateSummary();
@@ -88,6 +96,38 @@ public partial class MainWindow : Window
     {
         SearchBox.Focus();
         SearchBox.SelectAll();
+    }
+
+    private void PrinterSettings_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new PrinterSettingsWindow(printerOptions) { Owner = this };
+        if (window.ShowDialog() == true) printerOptions = store.LoadPrinterOptions();
+    }
+
+    private void Reports_Click(object sender, RoutedEventArgs e)
+    {
+        sales = store.LoadSales();
+        cashSessions = store.LoadCashSessions();
+        new ReportsWindow(sales, cashSessions, products) { Owner = this }.ShowDialog();
+    }
+
+    private void CashSession_Click(object sender, RoutedEventArgs e)
+    {
+        var window = new CashSessionWindow(sales) { Owner = this };
+        if (window.ShowDialog() != true) return;
+
+        cashSessions = store.LoadCashSessions();
+        activeCashSession = cashSessions.LastOrDefault(session => session.ClosedAt is null);
+        UpdateCashStatus();
+        RefreshCart();
+    }
+
+    private void UpdateCashStatus()
+    {
+        var isOpen = activeCashSession is not null;
+        CashStatusLabel.Text = isOpen ? $"Caixa #{activeCashSession!.Number:00000} aberto" : "Caixa fechado";
+        CashStatusDot.Fill = isOpen ? new SolidColorBrush(Color.FromRgb(76, 154, 99)) : new SolidColorBrush(Color.FromRgb(163, 71, 59));
+        CashSessionButton.Content = isOpen ? "Movimentar / fechar" : "Abrir caixa";
     }
 
     private void Category_Click(object sender, RoutedEventArgs e)
@@ -163,9 +203,14 @@ public partial class MainWindow : Window
         RefreshCart();
     }
 
-    private void Checkout_Click(object sender, RoutedEventArgs e)
+    private async void Checkout_Click(object sender, RoutedEventArgs e)
     {
         if (cart.Count == 0) return;
+        if (activeCashSession is null)
+        {
+            MessageBox.Show(this, "Abra o caixa antes de iniciar uma venda.", "Caixa fechado", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         var subtotal = cart.Sum(line => line.LineTotal);
         var requestedDiscount = decimal.TryParse(DiscountBox.Text, NumberStyles.Number, BrazilianCulture, out var parsedDiscount)
             ? Math.Max(0, parsedDiscount)
@@ -181,6 +226,7 @@ public partial class MainWindow : Window
             SoldAt = DateTime.Now,
             PaymentMethod = payment.SelectedMethod,
             Customer = string.IsNullOrWhiteSpace(CustomerBox.Text) ? "Consumidor final" : CustomerBox.Text.Trim(),
+            CashSessionNumber = activeCashSession.Number,
             Subtotal = subtotal,
             Discount = discount,
             Total = total,
@@ -188,6 +234,7 @@ public partial class MainWindow : Window
             {
                 ProductId = line.Product.Id,
                 ProductName = line.Product.Name,
+                Category = line.Product.Category,
                 Quantity = line.Quantity,
                 UnitPrice = line.Product.Price
             }).ToList()
@@ -198,9 +245,24 @@ public partial class MainWindow : Window
         store.SaveProducts(products);
         store.SaveSales(sales);
 
-        MessageBox.Show(
-            $"Venda #{sale.Number:00000} concluída.\nTotal: {sale.Total.ToString("C", BrazilianCulture)}\nPagamento: {sale.PaymentMethod}",
-            "Venda concluída", MessageBoxButton.OK, MessageBoxImage.Information);
+        string? printError = null;
+        if (printerOptions.PrintAfterSale)
+        {
+            try
+            {
+                await Task.Run(() => EscPosPrinter.PrintSale(printerOptions, sale));
+            }
+            catch (Exception exception)
+            {
+                printError = exception.Message;
+            }
+        }
+
+        var confirmation = $"Venda #{sale.Number:00000} concluída.\nTotal: {sale.Total.ToString("C", BrazilianCulture)}\nPagamento: {sale.PaymentMethod}";
+        if (printerOptions.PrintAfterSale && printError is null) confirmation += "\nCupom enviado para impressão.";
+        if (printError is not null) confirmation += $"\n\nA venda foi salva, mas o cupom não foi impresso:\n{printError}";
+        MessageBox.Show(confirmation, "Venda concluída", MessageBoxButton.OK,
+            printError is null ? MessageBoxImage.Information : MessageBoxImage.Warning);
 
         cart.Clear();
         DiscountBox.Text = "0";

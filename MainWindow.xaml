@@ -1,0 +1,121 @@
+<Window x:Class="PDV_Adega.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Vinha | Ponto de venda" Width="1460" Height="900"
+        MinWidth="1120" MinHeight="720" WindowStartupLocation="CenterScreen"
+        Background="#F5F7F3" FontFamily="Segoe UI" Language="pt-BR">
+  <Window.Resources>
+    <Style x:Key="ActionButton" TargetType="Button">
+      <Setter Property="Background" Value="#EAF1EB" />
+      <Setter Property="Foreground" Value="#345D47" />
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+  </Window.Resources>
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="2*" />
+      <ColumnDefinition Width="365" />
+    </Grid.ColumnDefinitions>
+    <Grid Grid.Column="0" Margin="28,24,24,24">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <StackPanel Grid.Row="0" Margin="0,0,0,20">
+        <TextBlock Text="ADEGA SANTA RITA" Foreground="#345D47" FontSize="10" FontWeight="Bold" />
+        <TextBlock Text="Ponto de venda" Foreground="#202B25" FontSize="26" FontWeight="Bold" Margin="0,3,0,0" />
+        <TextBlock x:Name="DateLabel" Foreground="#78817A" FontSize="12" Margin="0,3,0,0" />
+      </StackPanel>
+      <Grid Grid.Row="1" Margin="0,0,0,15">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Border Height="42" Background="White" BorderBrush="#E5E9E3" BorderThickness="1" CornerRadius="6">
+          <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="36" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <TextBlock Text="⌕" FontSize="21" Foreground="#78817A" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <TextBox x:Name="SearchBox" Grid.Column="1" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center" FontSize="13" TextChanged="SearchBox_TextChanged" KeyDown="SearchBox_KeyDown" ToolTip="Buscar produto ou código de barras" />
+          </Grid>
+        </Border>
+        <Button Grid.Column="1" Content="Leitor" Margin="8,0,0,0" Padding="13,0" Background="White" Foreground="#4D5951" BorderBrush="#E5E9E3" BorderThickness="1" Click="FocusSearch_Click" />
+      </Grid>
+      <ItemsControl x:Name="CategoriesList" Grid.Row="2" Margin="0,0,0,13">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate><DataTemplate>
+          <Button Content="{Binding}" Tag="{Binding}" Click="Category_Click" Margin="0,0,7,5" Padding="12,7" Background="Transparent" Foreground="#5E6861" BorderBrush="#E5E9E3" BorderThickness="1" FontSize="11" />
+        </DataTemplate></ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <Grid Grid.Row="3" Margin="0,0,0,10">
+        <TextBlock Text="Produtos" Foreground="#202B25" FontSize="15" FontWeight="Bold" />
+        <TextBlock x:Name="ProductCountLabel" HorizontalAlignment="Right" Foreground="#78817A" FontSize="11" VerticalAlignment="Center" />
+      </Grid>
+      <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl x:Name="ProductsList">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate><DataTemplate>
+            <Border Width="228" MinHeight="190" Margin="0,0,12,12" Background="White" BorderBrush="#E5E9E3" BorderThickness="1" CornerRadius="7" Padding="13">
+              <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Border Background="#EAF1EB" CornerRadius="4" Padding="7,3" HorizontalAlignment="Left"><TextBlock Text="{Binding Category}" Foreground="#345D47" FontSize="9" FontWeight="Bold" /></Border>
+                <StackPanel Grid.Row="1" Margin="0,12,0,8">
+                  <TextBlock Text="{Binding Name}" Foreground="#202B25" FontSize="13" FontWeight="Bold" TextWrapping="Wrap" MaxHeight="40" />
+                  <TextBlock Text="{Binding Origin}" Foreground="#78817A" FontSize="10" Margin="0,5,0,0" />
+                </StackPanel>
+                <Grid Grid.Row="2">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Price, StringFormat={}{0:C}}" Foreground="#202B25" FontSize="14" FontWeight="Bold" />
+                    <TextBlock Text="{Binding Stock, StringFormat={}{0} em estoque}" Foreground="#78817A" FontSize="10" Margin="0,3,0,0" />
+                  </StackPanel>
+                  <Button HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource ActionButton}" Content="+" Tag="{Binding}" Click="AddProduct_Click" />
+                </Grid>
+              </Grid>
+            </Border>
+          </DataTemplate></ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Grid>
+    <Border Grid.Column="1" Background="White" BorderBrush="#E5E9E3" BorderThickness="1,0,0,0">
+      <Grid Margin="21,24,21,18">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="0,0,0,13">
+          <StackPanel><TextBlock Text="Venda atual" Foreground="#202B25" FontSize="17" FontWeight="Bold" /><TextBlock x:Name="SaleNumberLabel" Foreground="#78817A" FontSize="10" Margin="0,3,0,0" /></StackPanel>
+          <Button x:Name="ClearCartButton" Content="Limpar venda" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#A3473B" Background="Transparent" FontSize="11" Click="ClearCart_Click" />
+        </Grid>
+        <Border Grid.Row="1" BorderBrush="#E5E9E3" BorderThickness="0,1,0,1" Padding="0,11">
+          <StackPanel><TextBlock Text="Cliente" Foreground="#78817A" FontSize="10" /><TextBox x:Name="CustomerBox" Text="Consumidor final" BorderThickness="0" Padding="0" Background="Transparent" Foreground="#202B25" FontSize="12" /></StackPanel>
+        </Border>
+        <Grid Grid.Row="2">
+          <TextBlock x:Name="EmptyCartLabel" Text="Sua venda está vazia&#10;Adicione produtos para começar" TextAlignment="Center" Foreground="#78817A" FontSize="12" VerticalAlignment="Center" HorizontalAlignment="Center" />
+          <ScrollViewer VerticalScrollBarVisibility="Auto"><ItemsControl x:Name="CartList" Margin="0,3,0,5">
+            <ItemsControl.ItemTemplate><DataTemplate>
+              <Border BorderBrush="#EFF0ED" BorderThickness="0,0,0,1" Padding="0,11">
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="{Binding Product.Name}" Foreground="#202B25" FontSize="11" FontWeight="Bold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding Product.Price, StringFormat={}{0:C} / un.}" Foreground="#78817A" FontSize="10" Margin="0,3,0,0" />
+                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                      <Button Content="−" Width="23" Height="23" Tag="{Binding}" Click="DecreaseQuantity_Click" Background="White" BorderBrush="#E5E9E3" BorderThickness="1" />
+                      <TextBlock Text="{Binding Quantity}" MinWidth="25" TextAlignment="Center" VerticalAlignment="Center" FontSize="11" FontWeight="Bold" />
+                      <Button Content="+" Width="23" Height="23" Tag="{Binding}" Click="IncreaseQuantity_Click" Background="White" BorderBrush="#E5E9E3" BorderThickness="1" />
+                    </StackPanel>
+                  </StackPanel>
+                  <TextBlock Grid.Column="1" Text="{Binding LineTotal, StringFormat={}{0:C}}" Foreground="#202B25" FontSize="11" FontWeight="Bold" VerticalAlignment="Top" Margin="8,1,0,0" />
+                </Grid>
+              </Border>
+            </DataTemplate></ItemsControl.ItemTemplate>
+          </ItemsControl></ScrollViewer>
+        </Grid>
+        <StackPanel Grid.Row="3" Margin="0,9,0,0">
+          <Grid Margin="0,0,0,8"><TextBlock Text="Subtotal" Foreground="#667069" FontSize="11" /><TextBlock x:Name="SubtotalLabel" HorizontalAlignment="Right" Foreground="#667069" FontSize="11" /></Grid>
+          <Grid Margin="0,0,0,8"><TextBox x:Name="DiscountBox" Width="68" Height="25" HorizontalAlignment="Left" Text="0" Padding="5,2" BorderBrush="#E5E9E3" TextChanged="DiscountBox_TextChanged" ToolTip="Desconto em reais" /><TextBlock Text="Desconto (R$)" Margin="75,0,0,0" VerticalAlignment="Center" Foreground="#667069" FontSize="10" /><TextBlock x:Name="DiscountLabel" HorizontalAlignment="Right" Foreground="#667069" FontSize="11" VerticalAlignment="Center" /></Grid>
+          <Border BorderBrush="#E5E9E3" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,3,0,0"><Grid><TextBlock Text="Total" Foreground="#202B25" FontSize="16" FontWeight="Bold" /><TextBlock x:Name="TotalLabel" HorizontalAlignment="Right" Foreground="#202B25" FontSize="16" FontWeight="Bold" /></Grid></Border>
+          <Button x:Name="CheckoutButton" Content="Finalizar venda" Height="46" Margin="0,13,0,0" Background="#345D47" Foreground="White" FontSize="13" FontWeight="Bold" Click="Checkout_Click" IsEnabled="False" />
+          <TextBlock Text="Vendas salvas neste computador" HorizontalAlignment="Center" Foreground="#89918B" FontSize="9" Margin="0,9,0,0" />
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

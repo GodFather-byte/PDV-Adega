@@ -1,0 +1,45 @@
+name: Build Windows executable
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish self-contained Windows executable
+        run: >-
+          dotnet publish PDV-Adega.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --output publish
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+
+      - name: Package executable
+        shell: pwsh
+        run: Compress-Archive -Path publish\* -DestinationPath PDV-Adega-win-x64.zip
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDV-Adega-win-x64
+          path: PDV-Adega-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14

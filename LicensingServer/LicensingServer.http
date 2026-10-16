@@ -1,0 +1,54 @@
+@baseUrl = https://localhost:7001
+@licenseId = replace-with-license-id
+@deviceId = replace-with-device-id
+
+### Login to the admin panel API (browser panel uses the same endpoint)
+POST {{baseUrl}}/api/admin/login
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+{
+  "password": "replace-with-admin-password"
+}
+
+### List licenses (requires the admin session cookie)
+GET {{baseUrl}}/api/admin/licenses/
+
+### Create a subscription license
+POST {{baseUrl}}/api/admin/licenses/
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+{
+  "customerName": "Adega Exemplo",
+  "expiresAt": "2027-10-16T23:59:59-03:00",
+  "maxDevices": 1
+}
+
+### Update expiry and allowed computers
+PUT {{baseUrl}}/api/admin/licenses/{{licenseId}}
+Content-Type: application/json
+Origin: {{baseUrl}}
+
+{
+  "expiresAt": "2027-10-16T23:59:59-03:00",
+  "maxDevices": 2
+}
+
+### Revoke a license immediately
+POST {{baseUrl}}/api/admin/licenses/{{licenseId}}/revoke
+Origin: {{baseUrl}}
+
+### Release a computer activation slot
+DELETE {{baseUrl}}/api/admin/licenses/{{licenseId}}/devices/{{deviceId}}
+Origin: {{baseUrl}}
+
+### Validate/activate a PDV device
+POST {{baseUrl}}/api/licenses/validate
+Content-Type: application/json
+
+{
+  "licenseKey": "replace-with-license-key",
+  "deviceId": "replace-with-device-id",
+  "deviceName": "PDV-CAIXA-01"
+}

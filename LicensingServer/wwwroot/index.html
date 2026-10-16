@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Licenças | PDV-Adega</title>
+  <style>
+    :root{font-family:Segoe UI,Arial,sans-serif;color:#202b25;background:#f5f7f3;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}.shell{max-width:1100px;margin:0 auto;padding:38px 24px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+    h1{font-size:25px;margin:0}p{color:#78817a;margin:7px 0}.card{background:white;border:1px solid #e5e9e3;border-radius:9px;padding:22px;margin-bottom:16px}
+    .login{max-width:420px;margin:10vh auto}.grid{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:12px;align-items:end}
+    label{display:block;font-size:12px;font-weight:600;margin-bottom:6px}input{width:100%;padding:10px;border:1px solid #d8dfd9;border-radius:5px;font:inherit}
+    button{border:0;border-radius:5px;padding:10px 14px;background:#345d47;color:#fff;font:600 13px inherit;cursor:pointer}
+    button.secondary{background:#eaf1eb;color:#345d47}button.danger{background:#a3473b}button:disabled{opacity:.55;cursor:wait}
+    .hidden{display:none!important}.error{color:#a3473b}.notice{padding:12px;background:#eaf1eb;border-radius:5px;margin-top:14px;overflow-wrap:anywhere}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:12px 10px;border-bottom:1px solid #e5e9e3;vertical-align:top}th{color:#78817a;font-size:11px}
+    .pill{display:inline-block;background:#eaf1eb;color:#345d47;border-radius:14px;padding:4px 8px;font-size:11px}.pill.off{background:#f8e9e7;color:#a3473b}
+    .devices{font-size:11px;color:#78817a;margin-top:6px}.actions{display:flex;gap:6px;flex-wrap:wrap}.actions button{padding:7px 9px;font-size:11px}
+    @media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.grid button{grid-column:span 2}header{align-items:flex-start}.shell{padding:22px 14px}}
+  </style>
+</head>
+<body>
+  <main id="login" class="card login">
+    <h1>Painel de licenças</h1><p>Entre com a senha administrativa.</p>
+    <form id="login-form"><label for="password">Senha</label><input id="password" type="password" autocomplete="current-password" required minlength="16" style="margin-bottom:14px"><button>Entrar</button></form>
+    <p id="login-error" class="error"></p>
+  </main>
+  <main id="dashboard" class="shell hidden">
+    <header><div><h1>Licenças PDV-Adega</h1><p>Assinaturas, vencimentos e dispositivos autorizados</p></div><button id="logout" class="secondary">Sair</button></header>
+    <section class="card">
+      <h2 style="font-size:17px;margin:0 0 16px">Criar licença</h2>
+      <form id="create-form" class="grid">
+        <div><label for="customer">Cliente / estabelecimento</label><input id="customer" required minlength="2" maxlength="160"></div>
+        <div><label for="expires">Válida até</label><input id="expires" type="date" required></div>
+        <div><label for="seats">Computadores</label><input id="seats" type="number" min="1" max="100" value="1" required></div>
+        <button>Criar licença</button>
+      </form>
+      <div id="created-key" class="notice hidden"></div>
+      <p id="create-error" class="error"></p>
+    </section>
+    <section class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:17px;margin:0">Licenças</h2><button id="refresh" class="secondary">Atualizar</button></div>
+      <p id="list-error" class="error"></p><div class="table-wrap"><table><thead><tr><th>Cliente / chave</th><th>Vencimento</th><th>Dispositivos</th><th>Status</th><th>Ações</th></tr></thead><tbody id="licenses"></tbody></table></div>
+    </section>
+  </main>
+<script>
+const login=document.querySelector('#login'),dashboard=document.querySelector('#dashboard');
+const msg=(selector,text)=>document.querySelector(selector).textContent=text;
+const api=async(path,options={})=>{const response=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});if(response.status===401)throw new Error('Sessão encerrada. Entre novamente.');if(!response.ok){let detail=`Falha (${response.status})`;try{const body=await response.json();detail=body.detail||body.title||detail;}catch{}throw new Error(detail);}return response.status===204?null:response.json();};
+const fmt=value=>new Date(value).toLocaleDateString('pt-BR');
+async function load(){try{const list=await api('/api/admin/licenses/');const tbody=document.querySelector('#licenses');tbody.replaceChildren();for(const license of list){const row=document.createElement('tr');const devices=license.devices.map(device=>`<div class="devices">${escapeHtml(device.deviceName)} · visto ${fmt(device.lastSeenAt)} <button class="danger" data-device="${escapeHtml(device.deviceId)}" data-license="${license.id}">Remover</button></div>`).join('')||'<span class="devices">Nenhum dispositivo</span>';row.innerHTML=`<td><strong>${escapeHtml(license.customerName)}</strong><div class="devices">${escapeHtml(license.keyPrefix)}••••••••</div></td><td>${fmt(license.expiresAt)}</td><td>${license.devices.length} / ${license.maxDevices}${devices}</td><td><span class="pill ${license.isRevoked?'off':''}">${license.isRevoked?'Revogada':new Date(license.expiresAt)<=new Date()?'Expirada':'Ativa'}</span></td><td class="actions"><button class="secondary" data-edit="${license.id}" data-expiry="${license.expiresAt}" data-seats="${license.maxDevices}">Editar</button>${license.isRevoked?'':'<button class="danger" data-revoke="'+license.id+'">Revogar</button>'}</td>`;tbody.append(row);}msg('#list-error','');}catch(error){msg('#list-error',error.message);if(error.message.startsWith('Sessão'))showLogin();}}
+function escapeHtml(value){return String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");}
+function showLogin(){dashboard.classList.add('hidden');login.classList.remove('hidden');}
+async function showDashboard(){login.classList.add('hidden');dashboard.classList.remove('hidden');await load();}
+document.querySelector('#login-form').addEventListener('submit',async event=>{event.preventDefault();try{await api('/api/admin/login',{method:'POST',body:JSON.stringify({password:document.querySelector('#password').value})});msg('#login-error','');await showDashboard();}catch(error){msg('#login-error',error.message==='Falha (401)'?'Senha incorreta.':error.message);}});
+document.querySelector('#create-form').addEventListener('submit',async event=>{event.preventDefault();try{const expires=new Date(`${document.querySelector('#expires').value}T23:59:59-03:00`).toISOString();const created=await api('/api/admin/licenses/',{method:'POST',body:JSON.stringify({customerName:document.querySelector('#customer').value,expiresAt:expires,maxDevices:Number(document.querySelector('#seats').value)})});const keyBox=document.querySelector('#created-key');keyBox.textContent=`Licença criada. Copie e entregue esta chave; ela não será exibida novamente: ${created.licenseKey}`;keyBox.classList.remove('hidden');msg('#create-error','');event.target.reset();document.querySelector('#seats').value='1';await load();}catch(error){msg('#create-error',error.message);}});
+document.querySelector('#licenses').addEventListener('click',async event=>{const button=event.target.closest('button');if(!button)return;try{if(button.dataset.revoke){if(!confirm('Revogar esta licença agora?'))return;await api(`/api/admin/licenses/${button.dataset.revoke}/revoke`,{method:'POST'});}else if(button.dataset.device){if(!confirm('Remover este dispositivo e liberar uma vaga?'))return;await api(`/api/admin/licenses/${button.dataset.license}/devices/${encodeURIComponent(button.dataset.device)}`,{method:'DELETE'});}else if(button.dataset.edit){const date=new Date(button.dataset.expiry);const input=prompt('Novo vencimento (AAAA-MM-DD)',date.toISOString().slice(0,10));if(!input)return;const seats=Number(prompt('Limite de computadores',button.dataset.seats));if(!Number.isInteger(seats)||seats<1||seats>100)throw new Error('O limite precisa estar entre 1 e 100.');await api(`/api/admin/licenses/${button.dataset.edit}`,{method:'PUT',body:JSON.stringify({expiresAt:new Date(`${input}T23:59:59-03:00`).toISOString(),maxDevices:seats})});}await load();}catch(error){msg('#list-error',error.message);}});
+document.querySelector('#refresh').addEventListener('click',load);
+document.querySelector('#logout').addEventListener('click',async()=>{try{await api('/api/admin/logout',{method:'POST'});}finally{showLogin();}});
+document.querySelector('#expires').value=new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+api('/api/admin/licenses/').then(showDashboard).catch(()=>showLogin());
+</script>
+</body>
+</html>

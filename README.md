@@ -52,7 +52,13 @@ Abra a URL HTTPS exibida pelo ASP.NET Core. O painel fica na raiz (`/`) e a docu
 
 No painel, crie uma licença informando cliente, vencimento e quantidade de computadores. Copie a chave exibida uma única vez e informe ao cliente. Na primeira abertura do PDV, informe a URL HTTPS do servidor e a chave. O mesmo computador será reconhecido nas validações seguintes; dispositivos vinculados e última conexão aparecem no painel.
 
-O PDV valida a assinatura online ao iniciar. Se o servidor ficar indisponível, uma licença previamente validada ainda funciona por até 7 dias desde a última validação e nunca além da data de expiração armazenada. Chaves e estado local são protegidos com DPAPI para o usuário do Windows atual. Revogações e renovações chegam ao PDV quando ele voltar a se conectar.
+A ativação por licença vem **desligada** por padrão: o PDV abre direto na tela de vendas. Para gerar uma versão que exige ativação, compile com `-p:EnableLicensing=true`:
+
+```powershell
+dotnet publish PDV-Adega.csproj -c Release -p:EnableLicensing=true
+```
+
+Com a ativação ligada, o PDV valida a assinatura online ao iniciar. Se o servidor ficar indisponível, uma licença previamente validada ainda funciona por até 7 dias desde a última validação e nunca além da data de expiração armazenada. Chaves e estado local são protegidos com DPAPI para o usuário do Windows atual. Revogações e renovações chegam ao PDV quando ele voltar a se conectar.
 
 O arquivo de licenças e as chaves de proteção são dados operacionais críticos: configure volume persistente, HTTPS, senha forte e backup antes de usar em produção. A API requer .NET 8 SDK/runtime para execução e build.
 

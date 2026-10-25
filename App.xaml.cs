@@ -12,12 +12,16 @@ public partial class App : Application
 
         try
         {
+#if LICENSING
             var licenseClient = new LicenseClient();
             if (!await licenseClient.EnsureLicensedAsync())
             {
                 Shutdown();
                 return;
             }
+#else
+            await Task.CompletedTask;
+#endif
 
             var mainWindow = new MainWindow();
             MainWindow = mainWindow;

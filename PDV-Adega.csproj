@@ -6,6 +6,9 @@
     <RootNamespace>PDV_Adega</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Ativação por licença desligada por padrão. Para exigir: dotnet publish -p:EnableLicensing=true -->
+    <EnableLicensing Condition="'$(EnableLicensing)' == ''">false</EnableLicensing>
+    <DefineConstants Condition="'$(EnableLicensing)' == 'true'">$(DefineConstants);LICENSING</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
